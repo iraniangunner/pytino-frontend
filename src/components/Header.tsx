@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import pytino from "../../public/images/pytino_logo.png";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NAV_LINKS = [
   { href: "/", label: "خانه" },
@@ -15,8 +16,16 @@ const NAV_LINKS = [
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const { isLoggedIn, user } = useAuth();
 
   const closeMenu = () => setIsOpen(false);
+
+  const authHref = isLoggedIn
+    ? user?.role === "admin"
+      ? "/admin/dashboard"
+      : "/dashboard"
+    : "/login";
+  const authLabel = isLoggedIn ? "حساب کاربری" : "ورود / ثبت‌نام";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/95 backdrop-blur-md">
@@ -47,10 +56,10 @@ export default function Header() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/signup-store"
+            href={authHref}
             className="hidden rounded-xl bg-[#6c5ce7] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#6c5ce7]/20 transition-transform hover:scale-[1.03] sm:inline-flex"
           >
-            درخواست دمو
+            {authLabel}
           </Link>
           <button
             type="button"
@@ -82,11 +91,11 @@ export default function Header() {
               </Link>
             ))}
             <Link
-              href="/signup-store"
+              href={authHref}
               onClick={closeMenu}
               className="mt-2 rounded-xl bg-[#6c5ce7] px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-[#6c5ce7]/20"
             >
-              درخواست دمو
+              {authLabel}
             </Link>
           </nav>
         </div>

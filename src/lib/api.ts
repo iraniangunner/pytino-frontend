@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // مثلاً https://app.pytino.com/api
 
 declare module "axios" {
   export interface AxiosRequestConfig {
@@ -97,7 +97,7 @@ api.interceptors.response.use(
       window.dispatchEvent(new Event("auth:logout"));
       return Promise.reject(err);
     }
-  },
+  }
 );
 
 export default api;
@@ -106,19 +106,30 @@ export default api;
 // Stores API
 // ─────────────────────────────────────────────
 export const storesAPI = {
+  // حالا نیاز به لاگین دارد — به حساب کاربری همان مشتری وصل می‌شود
   register: (data: {
     name: string;
     welcome_message?: string;
     source_type: "api_url" | "sample_json";
     api_url?: string;
     sample_json?: string;
-  }) => api.post("/stores/register", data),
+  }) => api.post("/stores/register", data, { requiresAuth: true }),
 
-  // فقط ادمین لاگین‌کرده می‌تواند لیست کامل را ببیند
+  // فروشگاه‌های همین مشتری لاگین‌شده (نه همه‌ی فروشگاه‌ها)
+  getMyStores: () => api.get("/my-stores", { requiresAuth: true }),
+
+  // فقط ادمین لاگین‌کرده می‌تواند لیست کامل همه را ببیند
   getAll: () => api.get("/stores", { requiresAuth: true }),
 
   getOne: (storeId: string) => api.get(`/stores/${storeId}`),
 
   updatePlan: (storeId: string, plan: string) =>
     api.patch(`/stores/${storeId}/plan`, { plan }, { requiresAuth: true }),
+};
+
+// ─────────────────────────────────────────────
+// Auth API
+// ─────────────────────────────────────────────
+export const authAPI = {
+  me: () => api.get("/auth/me", { requiresAuth: true }),
 };

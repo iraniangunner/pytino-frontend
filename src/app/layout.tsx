@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = localFont({
   src: "../../public/fonts/GeistVF.woff",
@@ -63,10 +64,12 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl">
       <body className={`${iranyekan.variable} antialiased`}>
-        <Header/>
-        {children}
-        <Footer/>
-        </body>
+        <AuthProvider>
+          <Header />
+          {children}
+          <Footer />
+        </AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!; // مثلاً https://app.pytino.com/api
 
@@ -12,9 +11,8 @@ const cookieBase = {
   secure: process.env.NODE_ENV === "production",
 };
 
-// باید دقیقاً با Passport::refreshTokensExpireIn توی AppServiceProvider
-// سمت Laravel یکی باشد، وگرنه کوکی زودتر/دیرتر از توکن واقعی منقضی می‌شود.
-const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 30;
+// باید دقیقاً با Passport::refreshTokensExpireIn توی AppServiceProvider یکی باشد
+const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 14; // ۱۴ روز
 
 async function setAuthCookies(data: {
   access_token: string;
@@ -32,27 +30,91 @@ async function setAuthCookies(data: {
   });
 }
 
-export type AuthState = { isSuccess: boolean; error?: string };
+export type OtpState = {
+  status: "idle" | "sent" | "error";
+  error?: string;
+  channel?: "email" | "mobile";
+  receiver?: string;
+};
+
+export type VerifyState = {
+  isSuccess: boolean;
+  error?: string;
+  role?: string;
+};
 
 // ========================
-// Login
+// قدم ۱: ارسال کد
 // ========================
-export async function loginAction(
-  _prevState: AuthState,
+export async function sendOtpAction(
+  _prevState: OtpState,
   formData: FormData,
-): Promise<AuthState> {
-  const email = (formData.get("email") as string)?.trim();
-  const password = formData.get("password") as string;
+): Promise<OtpState> {
+  const channel = formData.get("channel") as "email" | "mobile";
+  const receiver = ((formData.get("receiver") as string) || "").trim();
 
-  if (!email || !password) {
-    return { isSuccess: false, error: "ایمیل و رمز عبور را وارد کنید." };
+  if (!receiver) {
+    return {
+      status: "error",
+      error:
+        channel === "email"
+          ? "ایمیل را وارد کنید."
+          : "شماره موبایل را وارد کنید.",
+    };
   }
 
   try {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetch(`${API_URL}/auth/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(
+        channel === "email" ? { email: receiver } : { mobile: receiver },
+      ),
+      cache: "no-store",
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const errors = data.errors;
+      return {
+        status: "error",
+        error: errors
+          ? Object.values(errors).flat().join(" - ")
+          : data.message || "خطا در ارسال کد.",
+      };
+    }
+
+    return { status: "sent", channel, receiver };
+  } catch {
+    return { status: "error", error: "خطا در برقراری ارتباط با سرور." };
+  }
+}
+
+// ========================
+// قدم ۲: تأیید کد
+// ========================
+export async function verifyOtpAction(
+  _prevState: VerifyState,
+  formData: FormData,
+): Promise<VerifyState> {
+  const channel = formData.get("channel") as "email" | "mobile";
+  const receiver = formData.get("receiver") as string;
+  const code = ((formData.get("code") as string) || "").trim();
+
+  if (!code) {
+    return { isSuccess: false, error: "کد تأیید را وارد کنید." };
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        channel === "email"
+          ? { email: receiver, code }
+          : { mobile: receiver, code },
+      ),
       cache: "no-store",
     });
 
@@ -61,12 +123,12 @@ export async function loginAction(
     if (!res.ok) {
       return {
         isSuccess: false,
-        error: data.message || "ایمیل یا رمز عبور اشتباه است.",
+        error: data.message || "کد وارد‌شده اشتباه یا منقضی‌شده است.",
       };
     }
 
     await setAuthCookies(data);
-    return { isSuccess: true };
+    return { isSuccess: true, role: data.user?.role };
   } catch {
     return { isSuccess: false, error: "خطا در برقراری ارتباط با سرور." };
   }
@@ -93,5 +155,6 @@ export async function logoutAction(): Promise<void> {
 
   c.delete("access_token");
   c.delete("refresh_token");
-  redirect("/login");
+  // عمداً اینجا redirect نمی‌کنیم — کامپوننت صداکننده باید بعد از این، هم
+  // AuthContext رو رفرش کنه هم خودش مسیر رو عوض کنه، تا هدر هم درست به‌روز بشه
 }

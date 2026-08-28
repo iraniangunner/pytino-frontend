@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { storesAPI } from "@/lib/api";
 import { logoutAction } from "../../_actions/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Store = {
   store_id: string;
@@ -173,6 +174,7 @@ function PlanEditor({
 
 export default function AdminPage() {
   const router = useRouter();
+  const { refetch } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -216,14 +218,17 @@ export default function AdminPage() {
           </span>
         </div>
 
-        <form action={logoutAction} className="mb-6">
-          <button
-            type="submit"
-            className="text-sm text-slate-500 underline hover:text-slate-700"
-          >
-            خروج از حساب
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={async () => {
+            await logoutAction();
+            refetch();
+            router.push("/login");
+          }}
+          className="mb-6 text-sm text-slate-500 underline hover:text-slate-700"
+        >
+          خروج از حساب
+        </button>
 
         {loading && <p className="text-sm text-slate-500">در حال بارگذاری…</p>}
         {error && (
