@@ -48,7 +48,7 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
   if (limit === null) {
     return (
       <div className="rounded-xl bg-slate-50 px-4 py-3">
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
           <span className="font-medium text-slate-700">مصرف پیام این ماه</span>
           <span className="text-slate-500">
             {used.toLocaleString("fa-IR")} پیام
@@ -72,7 +72,7 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
 
   return (
     <div className="rounded-xl bg-slate-50 px-4 py-3">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
         <span className="font-medium text-slate-700">مصرف پیام این ماه</span>
         <span className="text-slate-500">
           {used.toLocaleString("fa-IR")} از {limit.toLocaleString("fa-IR")}
@@ -135,7 +135,7 @@ export default function StoresContent() {
           {stores.map((store) => (
             <div
               key={store.store_id}
-              className="rounded-2xl border border-slate-200 bg-white p-6"
+              className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6"
             >
               <div className="mb-4">
                 <h2 className="font-bold text-slate-900">{store.name}</h2>

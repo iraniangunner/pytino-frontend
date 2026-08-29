@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { logoutAction } from "../_actions/auth";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "نمای کلی" },
+  { href: "/dashboard", label: "داشبورد" },
   { href: "/dashboard/stores", label: "فروشگاه‌ها" },
   { href: "/dashboard/settings", label: "تنظیمات" },
   { href: "/dashboard/billing", label: "صورت‌حساب" },
@@ -86,7 +86,7 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         {/* نوار موبایل — چون منوی کناری توی موبایل مخفیه */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
           <span className="text-sm font-semibold text-[#6C5CE7]">
@@ -125,7 +125,7 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <main className="p-6">{children}</main>
+        <main className="overflow-x-hidden p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
