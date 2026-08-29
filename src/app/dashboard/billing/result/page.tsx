@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+
 import ResultContent from "../../_components/ResultContent";
 
 export const metadata: Metadata = {
@@ -6,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function ResultPage() {
-  return <ResultContent />;
+  return (
+    <Suspense fallback={<div>در حال بررسی نتیجه پرداخت...</div>}>
+      <ResultContent />
+    </Suspense>
+  );
 }
