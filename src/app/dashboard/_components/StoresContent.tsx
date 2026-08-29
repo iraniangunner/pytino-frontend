@@ -9,6 +9,7 @@ type Store = {
   name: string;
   welcome_message: string;
   plan: string;
+  plan_expires_at: string | null;
   monthly_message_count: number;
   monthly_limit: number | null;
   created_at: string;
@@ -110,7 +111,7 @@ export default function StoresContent() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl overflow-x-hidden">
       <h1 className="mb-8 text-xl font-bold text-slate-900">فروشگاه‌های من</h1>
 
       {loading && <p className="text-sm text-slate-500">در حال بارگذاری…</p>}
@@ -137,15 +138,41 @@ export default function StoresContent() {
               key={store.store_id}
               className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6"
             >
-              <div className="mb-4">
-                <h2 className="font-bold text-slate-900">{store.name}</h2>
-                <span className="text-xs text-slate-400">
-                  پلن:{" "}
-                  <span className="font-medium text-[#6C5CE7]">
-                    {store.plan}
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold text-slate-900">{store.name}</h2>
+                  <span className="text-xs text-slate-400">
+                    پلن:{" "}
+                    <span className="font-medium text-[#6C5CE7]">
+                      {store.plan}
+                    </span>
+                    {store.plan !== "free" && store.plan_expires_at && (
+                      <span className="mr-1">
+                        · تمدید تا{" "}
+                        {new Date(store.plan_expires_at).toLocaleDateString(
+                          "fa-IR",
+                        )}
+                      </span>
+                    )}
                   </span>
-                </span>
+                </div>
+                <Link
+                  href="/pricing"
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold
+                             text-slate-700 hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
+                >
+                  ارتقای پلن
+                </Link>
               </div>
+
+              {(store.plan === "business" || store.plan === "pro") && (
+                <Link
+                  href={`/dashboard/stores/${store.store_id}/conversations`}
+                  className="mb-4 inline-block text-xs font-medium text-[#6C5CE7] underline"
+                >
+                  مشاهده‌ی تاریخچه‌ی مکالمات
+                </Link>
+              )}
 
               <div className="mb-4">
                 <UsageBar
@@ -162,7 +189,7 @@ export default function StoresContent() {
                   <CopyButton text={buildEmbedCode(store)} />
                 </div>
                 <pre
-                  className="overflow-x-auto text-left text-xs leading-relaxed text-emerald-300"
+                  className="max-w-full overflow-x-auto text-left text-xs leading-relaxed text-emerald-300"
                   dir="ltr"
                 >
                   <code>{buildEmbedCode(store)}</code>

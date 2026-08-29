@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import PlanCTAButton from "@/components/PlanCTAButton";
 
 export const metadata: Metadata = {
-  title: "قیمت گذاری",
+  title: "پایتینو | قیمت‌گذاری",
 };
 
 const PLANS = [
   {
+    key: "free" as const,
     name: "Free",
     price: "رایگان",
     period: "",
@@ -20,8 +21,9 @@ const PLANS = [
     highlighted: false,
   },
   {
+    key: "starter" as const,
     name: "Starter",
-    price: "۸,۰۰۰,۰۰۰",
+    price: "۱,۰۰۰,۰۰۰",
     period: "تومان / ماه",
     description: "برای فروشگاه‌هایی که می‌خوان جستجوی هوشمند داشته باشن",
     features: [
@@ -33,8 +35,9 @@ const PLANS = [
     highlighted: false,
   },
   {
+    key: "business" as const,
     name: "Business",
-    price: "۴۰,۰۰۰,۰۰۰",
+    price: "۸,۰۰۰,۰۰۰",
     period: "تومان / ماه",
     description: "برای فروشگاه‌هایی که مکالمه‌ی پیوسته می‌خوان",
     features: [
@@ -42,12 +45,14 @@ const PLANS = [
       "۱۰,۰۰۰ پیام در ماه",
       "همه‌ی امکانات Starter",
       "حافظه‌ی مکالمه (تا ۶ رفت‌وبرگشت)",
+      "تاریخچه‌ی مکالمات مشتری‌ها",
     ],
     highlighted: true,
   },
   {
+    key: "pro" as const,
     name: "Pro",
-    price: "۱۰۰,۰۰۰,۰۰۰",
+    price: "۴۰,۰۰۰,۰۰۰",
     period: "تومان / ماه",
     description: "برای فروشگاه‌هایی که می‌خوان دستیار واقعاً کار انجام بده",
     features: [
@@ -130,16 +135,11 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Link
-              href="/login"
-              className={`mt-8 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-transform hover:scale-[1.02] ${
-                plan.highlighted
-                  ? "bg-gradient-to-l from-[#6C5CE7] to-[#8B7CF0] text-white shadow-md shadow-[#6C5CE7]/25"
-                  : "border border-slate-300 text-slate-700 hover:border-slate-400"
-              }`}
-            >
-              {plan.name === "Free" ? "شروع رایگان" : "انتخاب این پلن"}
-            </Link>
+            <PlanCTAButton
+              planKey={plan.key}
+              highlighted={plan.highlighted}
+              label={plan.key === "free" ? "شروع رایگان" : "انتخاب این پلن"}
+            />
           </div>
         ))}
       </div>

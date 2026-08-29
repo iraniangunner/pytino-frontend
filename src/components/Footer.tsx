@@ -8,7 +8,7 @@ const FOOTER_COLUMNS = [
     links: [
       { href: "/#features", label: "ویژگی‌ها" },
       { href: "/#demo", label: "دمو" },
-      { href: "/#pricing", label: "قیمت‌گذاری" },
+      { href: "/pricing", label: "قیمت‌گذاری" },
     ],
   },
   {

@@ -97,7 +97,7 @@ api.interceptors.response.use(
       window.dispatchEvent(new Event("auth:logout"));
       return Promise.reject(err);
     }
-  }
+  },
 );
 
 export default api;
@@ -132,4 +132,32 @@ export const storesAPI = {
 // ─────────────────────────────────────────────
 export const authAPI = {
   me: () => api.get("/auth/me", { requiresAuth: true }),
+};
+
+// ─────────────────────────────────────────────
+// Payments API
+// ─────────────────────────────────────────────
+export const paymentsAPI = {
+  initiate: (storeId: string, plan: "starter" | "business" | "pro") =>
+    api.post(
+      "/payments/initiate",
+      { store_id: storeId, plan },
+      { requiresAuth: true },
+    ),
+};
+
+// ─────────────────────────────────────────────
+// Conversations API
+// ─────────────────────────────────────────────
+export const conversationsAPI = {
+  getSessions: (storeId: string, page = 1) =>
+    api.get(`/stores/${storeId}/conversations`, {
+      params: { page },
+      requiresAuth: true,
+    }),
+
+  getMessages: (storeId: string, sessionId: string) =>
+    api.get(`/stores/${storeId}/conversations/${sessionId}`, {
+      requiresAuth: true,
+    }),
 };
