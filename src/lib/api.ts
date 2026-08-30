@@ -144,6 +144,15 @@ export const paymentsAPI = {
       { store_id: storeId, plan },
       { requiresAuth: true },
     ),
+
+  getHistory: () => api.get("/my-payments", { requiresAuth: true }),
+};
+
+// ─────────────────────────────────────────────
+// Gemini Usage API (فقط ادمین)
+// ─────────────────────────────────────────────
+export const geminiUsageAPI = {
+  get: () => api.get("/admin/gemini-usage", { requiresAuth: true }),
 };
 
 // ─────────────────────────────────────────────

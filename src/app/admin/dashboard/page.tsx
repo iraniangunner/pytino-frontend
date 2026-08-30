@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { storesAPI } from "@/lib/api";
+import { storesAPI, geminiUsageAPI } from "@/lib/api";
 import { logoutAction } from "../../_actions/auth";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -15,6 +15,8 @@ type Store = {
   message_count: number;
   monthly_message_count: number;
   monthly_limit: number | null;
+  total_prompt_tokens: number;
+  total_output_tokens: number;
   last_used_at: string | null;
   created_at: string;
 };
@@ -172,6 +174,101 @@ function PlanEditor({
   );
 }
 
+function UsageMetric({
+  label,
+  current,
+  limit,
+  unit,
+}: {
+  label: string;
+  current: number;
+  limit: number | null;
+  unit: string;
+}) {
+  if (limit === null) {
+    return (
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="font-medium text-slate-600">{label}</span>
+          <span className="text-slate-400">
+            {current.toLocaleString("fa-IR")} (نامحدود)
+          </span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-slate-100" />
+      </div>
+    );
+  }
+
+  const ratio = current / limit;
+  const barColor =
+    ratio >= 0.9
+      ? "bg-rose-500"
+      : ratio >= 0.7
+        ? "bg-amber-500"
+        : "bg-[#6C5CE7]";
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-xs">
+        <span className="font-medium text-slate-600">{label}</span>
+        <span className="text-slate-500">
+          {current.toLocaleString("fa-IR")} / {limit.toLocaleString("fa-IR")}{" "}
+          {unit}
+        </span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+        <div
+          className={`h-full rounded-full ${barColor}`}
+          style={{ width: `${Math.min(100, ratio * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GeminiUsageCard({
+  title,
+  usage,
+}: {
+  title: string;
+  usage: GeminiCategoryUsage;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <p className="mb-3 text-sm font-semibold text-slate-900">{title}</p>
+      <div className="space-y-3">
+        <UsageMetric
+          label="درخواست/دقیقه (RPM)"
+          current={usage.current_rpm}
+          limit={usage.rpm_limit}
+          unit=""
+        />
+        <UsageMetric
+          label="توکن/دقیقه (TPM)"
+          current={usage.current_tpm}
+          limit={usage.tpm_limit}
+          unit=""
+        />
+        <UsageMetric
+          label="درخواست/روز (RPD)"
+          current={usage.current_rpd}
+          limit={usage.rpd_limit}
+          unit=""
+        />
+      </div>
+    </div>
+  );
+}
+
+type GeminiCategoryUsage = {
+  current_rpm: number;
+  rpm_limit: number;
+  current_tpm: number;
+  tpm_limit: number;
+  current_rpd: number;
+  rpd_limit: number | null;
+};
+
 export default function AdminPage() {
   const router = useRouter();
   const { refetch } = useAuth();
@@ -179,6 +276,17 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalStore, setModalStore] = useState<Store | null>(null);
+  const [geminiUsage, setGeminiUsage] = useState<{
+    chat: GeminiCategoryUsage;
+    embedding: GeminiCategoryUsage;
+  } | null>(null);
+
+  function fetchGeminiUsage() {
+    geminiUsageAPI
+      .get()
+      .then((res) => setGeminiUsage(res.data.usage))
+      .catch(() => {});
+  }
 
   useEffect(() => {
     function handleLogout() {
@@ -191,6 +299,8 @@ export default function AdminPage() {
       .then((res) => setStores(res.data.stores))
       .catch(() => setError("دریافت لیست فروشگاه‌ها ناموفق بود."))
       .finally(() => setLoading(false));
+
+    fetchGeminiUsage();
 
     return () => window.removeEventListener("auth:logout", handleLogout);
   }, [router]);
@@ -218,6 +328,59 @@ export default function AdminPage() {
           </span>
         </div>
 
+        {geminiUsage && (
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">
+              مصرف زنده‌ی Gemini (نسبت به سقف واقعی Tier 1 — هر مدل جدا)
+            </span>
+            <button
+              type="button"
+              onClick={fetchGeminiUsage}
+              className="text-xs font-medium text-[#6C5CE7] underline"
+            >
+              به‌روزرسانی
+            </button>
+          </div>
+        )}
+
+        {geminiUsage && (
+          <div className="mb-8 grid gap-4 sm:grid-cols-2">
+            <GeminiUsageCard
+              title="مدل چت (Gemini 3.6 Flash)"
+              usage={geminiUsage.chat}
+            />
+            <GeminiUsageCard
+              title="مدل Embedding (جستجوی معنایی)"
+              usage={geminiUsage.embedding}
+            />
+          </div>
+        )}
+
+        {!loading && !error && stores.length > 0 && (
+          <div className="mb-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs text-slate-400">
+                مجموع توکن ورودی Gemini از ابتدا (کل فروشگاه‌ها)
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stores
+                  .reduce((sum, s) => sum + s.total_prompt_tokens, 0)
+                  .toLocaleString("fa-IR")}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs text-slate-400">
+                مجموع توکن خروجی Gemini از ابتدا (کل فروشگاه‌ها)
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {stores
+                  .reduce((sum, s) => sum + s.total_output_tokens, 0)
+                  .toLocaleString("fa-IR")}
+              </p>
+            </div>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={async () => {
@@ -238,64 +401,76 @@ export default function AdminPage() {
         )}
 
         {!loading && !error && (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium">
-                    اسم فروشگاه
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium">پلن</th>
-                  <th className="px-4 py-3 text-right font-medium">
-                    مصرف این ماه
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium">
-                    آخرین استفاده
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium">کد نصب</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stores.map((store) => (
-                  <tr
-                    key={store.store_id}
-                    className="border-t border-slate-100"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">
-                        {store.name}
-                      </div>
-                      <div className="font-mono text-xs text-slate-400">
-                        {store.store_id}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <PlanEditor store={store} onSaved={handlePlanSaved} />
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {store.monthly_message_count} /{" "}
-                      {store.monthly_limit ?? "∞"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">
-                      {store.last_used_at
-                        ? new Date(store.last_used_at).toLocaleDateString(
-                            "fa-IR",
-                          )
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setModalStore(store)}
-                        className="text-xs font-medium text-[#6C5CE7] underline"
-                      >
-                        نمایش کد
-                      </button>
-                    </td>
+          <div className="rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 text-right font-medium">
+                      اسم فروشگاه
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">پلن</th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      مصرف این ماه
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      توکن Gemini (ورودی/خروجی)
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      آخرین استفاده
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">کد نصب</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {stores.map((store) => (
+                    <tr
+                      key={store.store_id}
+                      className="border-t border-slate-100"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-slate-900">
+                          {store.name}
+                        </div>
+                        <div className="font-mono text-xs text-slate-400">
+                          {store.store_id}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <PlanEditor store={store} onSaved={handlePlanSaved} />
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {store.monthly_message_count} /{" "}
+                        {store.monthly_limit ?? "∞"}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-xs text-slate-500"
+                        dir="ltr"
+                      >
+                        {store.total_prompt_tokens.toLocaleString("fa-IR")} /{" "}
+                        {store.total_output_tokens.toLocaleString("fa-IR")}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {store.last_used_at
+                          ? new Date(store.last_used_at).toLocaleDateString(
+                              "fa-IR",
+                            )
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setModalStore(store)}
+                          className="text-xs font-medium text-[#6C5CE7] underline"
+                        >
+                          نمایش کد
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
