@@ -68,45 +68,47 @@ export default function BillingContent() {
       )}
 
       {!loading && payments.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                <th className="px-4 py-3 text-right font-medium">تاریخ</th>
-                <th className="px-4 py-3 text-right font-medium">فروشگاه</th>
-                <th className="px-4 py-3 text-right font-medium">پلن</th>
-                <th className="px-4 py-3 text-right font-medium">مبلغ</th>
-                <th className="px-4 py-3 text-right font-medium">وضعیت</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((payment) => (
-                <tr key={payment.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 text-slate-500">
-                    {new Date(payment.created_at).toLocaleDateString("fa-IR")}
-                  </td>
-                  <td className="px-4 py-3 text-slate-900">
-                    {payment.store?.name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-[#6C5CE7]">
-                      {PLAN_LABELS[payment.plan] ?? payment.plan}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {(payment.amount / 10).toLocaleString("fa-IR")} تومان
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[payment.status]}`}
-                    >
-                      {STATUS_LABELS[payment.status]}
-                    </span>
-                  </td>
+        <div className="rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-sm">
+              <thead className="bg-slate-50 text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 text-right font-medium">تاریخ</th>
+                  <th className="px-4 py-3 text-right font-medium">فروشگاه</th>
+                  <th className="px-4 py-3 text-right font-medium">پلن</th>
+                  <th className="px-4 py-3 text-right font-medium">مبلغ</th>
+                  <th className="px-4 py-3 text-right font-medium">وضعیت</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {payments.map((payment) => (
+                  <tr key={payment.id} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-slate-500">
+                      {new Date(payment.created_at).toLocaleDateString("fa-IR")}
+                    </td>
+                    <td className="px-4 py-3 text-slate-900">
+                      {payment.store?.name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-[#6C5CE7]">
+                        {PLAN_LABELS[payment.plan] ?? payment.plan}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {(payment.amount / 10).toLocaleString("fa-IR")} تومان
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[payment.status]}`}
+                      >
+                        {STATUS_LABELS[payment.status]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
