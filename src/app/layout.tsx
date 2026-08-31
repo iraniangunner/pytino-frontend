@@ -55,6 +55,9 @@ export const metadata: Metadata = {
   },
   description:
     "پایتینو دستیار هوش مصنوعی فروشگاه‌های اینترنتی است — محصولاتتان را می‌شناسد و به مشتری‌ها کمک می‌کند سریع‌تر جواب بگیرند و خرید کنند.",
+  verification: {
+    google: "T8JTrOn7ZFNDg5k2PfQumTirmtHPbB7rowgSJuul9I8",
+  },
 };
 export default function RootLayout({
   children,
