@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PlanCTAButton from "@/components/PlanCTAButton";
 
 export const metadata: Metadata = {
-  title: "پایتینو | قیمت‌گذاری",
+  title: "قیمت گذاری"
 };
 
 const PLANS = [
