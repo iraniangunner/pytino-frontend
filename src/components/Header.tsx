@@ -10,8 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const NAV_LINKS = [
   { href: "/", label: "خانه" },
   { href: "/#features", label: "ویژگی‌ها" },
-  { href: "/#resources", label: "منابع" },
-  { href: "/#about", label: "درباره ما" },
+  { href: "/faq", label: "سوالات متداول"},
+  { href: "/about", label: "درباره ما" },
 ];
 
 export default function Header() {

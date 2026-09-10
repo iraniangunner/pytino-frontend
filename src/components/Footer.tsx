@@ -7,15 +7,14 @@ const FOOTER_COLUMNS = [
     title: "محصول",
     links: [
       { href: "/#features", label: "ویژگی‌ها" },
-      { href: "/#demo", label: "دمو" },
       { href: "/pricing", label: "قیمت‌گذاری" },
     ],
   },
   {
     title: "پشتیبانی",
     links: [
-      { href: "/#faq", label: "سوالات متداول" },
-      { href: "mailto:info@pytino.com", label: "تماس با ما" },
+      { href: "/faq", label: "سوالات متداول" },
+      { href: "/contact", label: "تماس با ما" },
     ],
   },
 ];

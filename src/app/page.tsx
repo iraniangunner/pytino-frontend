@@ -3,6 +3,7 @@ import Link from "next/link";
 import pytino from "../../public/images/pytino_logo.png";
 import DemoSection from "@/components/DemoSection";
 import HeroCTA from "@/components/HeroCTA";
+import FeaturesSection from "@/components/FeaturesSection";
 
 export default function HomePage() {
   return (
@@ -56,6 +57,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <FeaturesSection />
 
       <DemoSection />
     </div>
