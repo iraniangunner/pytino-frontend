@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PlanCTAButton from "@/components/PlanCTAButton";
 
 export const metadata: Metadata = {
-  title: "قیمت گذاری",
+  title: "قیمت گذاری"
 };
 
 const PLANS = [
@@ -63,7 +63,7 @@ const PLANS = [
       "پیام نامحدود",
       "همه‌ی امکانات Business",
       "Tool Calling و Agent (محاسبه‌ی سفارش و بیشتر)",
-      "انتخاب مدل: همه‌ی موارد بالا + GPT-4o",
+      "انتخاب مدل: Gemini 3.8 Flash، Gemini 3.1 Flash Lite، Gemini 2.5 Pro، GPT-4o Mini یا GPT-5 Mini",
     ],
     highlighted: false,
   },
