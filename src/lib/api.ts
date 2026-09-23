@@ -125,6 +125,14 @@ export const storesAPI = {
 
   updatePlan: (storeId: string, plan: string) =>
     api.patch(`/stores/${storeId}/plan`, { plan }, { requiresAuth: true }),
+
+  // تغییر مدل هوش مصنوعی یک فروشگاه مستقیم — فقط بین گزینه‌های مجاز پلن فعلی
+  updateModelPreference: (storeId: string, provider: string, model: string) =>
+    api.patch(
+      `/my-stores/${storeId}/model-preference`,
+      { provider, model },
+      { requiresAuth: true },
+    ),
 };
 
 // ─────────────────────────────────────────────
