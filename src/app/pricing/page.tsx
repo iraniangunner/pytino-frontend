@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PlanCTAButton from "@/components/PlanCTAButton";
 
 export const metadata: Metadata = {
-  title: "قیمت گذاری"
+  title: "قیمت گذاری",
 };
 
 const PLANS = [
@@ -17,7 +17,6 @@ const PLANS = [
       "۱۰۰ پیام در ماه",
       "چت پایه با محصولات",
       "حداکثر ۱۵۰ محصول در پرامپت",
-      "مدل: Gemini 3.8 Flash",
     ],
     highlighted: false,
   },
@@ -32,7 +31,6 @@ const PLANS = [
       "۲,۰۰۰ پیام در ماه",
       "جستجوی معنایی (RAG)",
       "فقط محصولات مرتبط در هر پاسخ",
-      "مدل: Gemini 3.8 Flash",
     ],
     highlighted: false,
   },
@@ -48,7 +46,7 @@ const PLANS = [
       "همه‌ی امکانات Starter",
       "حافظه‌ی مکالمه (تا ۶ رفت‌وبرگشت)",
       "تاریخچه‌ی مکالمات مشتری‌ها",
-      "انتخاب مدل: Gemini 3.8 Flash، Gemini 3.1 Flash Lite، Gemini 2.5 Pro، GPT-4o Mini یا GPT-5 Mini",
+      "هوش مصنوعی پیشرفته با پایداری بالا",
     ],
     highlighted: true,
   },
@@ -63,7 +61,7 @@ const PLANS = [
       "پیام نامحدود",
       "همه‌ی امکانات Business",
       "Tool Calling و Agent (محاسبه‌ی سفارش و بیشتر)",
-      "انتخاب مدل: Gemini 3.8 Flash، Gemini 3.1 Flash Lite، Gemini 2.5 Pro، GPT-4o Mini یا GPT-5 Mini",
+      "هوش مصنوعی پیشرفته با پایداری بالا",
     ],
     highlighted: false,
   },

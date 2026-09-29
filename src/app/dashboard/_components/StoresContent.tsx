@@ -4,12 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { storesAPI } from "@/lib/api";
 
-type ModelOption = {
-  provider: string;
-  model: string;
-  label: string;
-};
-
 type Store = {
   store_id: string;
   name: string;
@@ -19,10 +13,6 @@ type Store = {
   monthly_message_count: number;
   monthly_limit: number | null;
   created_at: string;
-  // فیلدهای جدید — این‌ها را Store.php سمت لاراول خودکار به هر فروشگاه اضافه می‌کند
-  available_models: ModelOption[];
-  preferred_provider: string | null;
-  preferred_model: string | null;
 };
 
 const PYTHON_SERVICE_URL =
@@ -101,78 +91,6 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
           <span className="mr-1 font-medium text-rose-600">— نزدیک سقف!</span>
         )}
       </p>
-    </div>
-  );
-}
-
-// این کامپوننت تازه‌ست — فقط برای فروشگاه‌های مستقیم معنی داره (فروشگاه‌های
-// بازارگاه اصلاً available_models ندارن چون از کلید خودشون استفاده می‌کنن)
-function ModelSelector({ store }: { store: Store }) {
-  const currentKey = `${store.preferred_provider ?? "gemini"}:${store.preferred_model ?? "gemini-3.8-flash"}`;
-  const [selected, setSelected] = useState(currentKey);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!store.available_models || store.available_models.length <= 1) {
-    // اگه پلن فقط یه مدل مجاز داره (مثلاً پلن رایگان)، انتخابی برای نشون‌دادن نیست
-    return null;
-  }
-
-  async function handleSave() {
-    const [provider, model] = selected.split(":");
-    setSaving(true);
-    setError(null);
-    try {
-      await storesAPI.updateModelPreference(store.store_id, provider, model);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1800);
-    } catch (e) {
-      setError("ذخیره نشد. دوباره امتحان کن.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="mb-4 rounded-xl bg-slate-50 px-4 py-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-700">
-          مدل هوش مصنوعی
-        </span>
-        {saved && (
-          <span className="text-xs font-medium text-emerald-600">
-            ذخیره شد ✓
-          </span>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className="min-w-[180px] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2
-                     text-sm text-slate-700 focus:border-[#6C5CE7] focus:outline-none"
-        >
-          {store.available_models.map((opt) => (
-            <option
-              key={`${opt.provider}:${opt.model}`}
-              value={`${opt.provider}:${opt.model}`}
-            >
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || selected === currentKey}
-          className="shrink-0 rounded-lg bg-[#6C5CE7] px-4 py-2 text-xs font-semibold text-white
-                     transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          {saving ? "در حال ذخیره…" : "اعمال کن"}
-        </button>
-      </div>
-      {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
     </div>
   );
 }
@@ -262,8 +180,6 @@ export default function StoresContent() {
                   limit={store.monthly_limit}
                 />
               </div>
-
-              <ModelSelector store={store} />
 
               <div className="rounded-xl bg-slate-900 p-4">
                 <div className="mb-2 flex items-center justify-between">
