@@ -125,6 +125,18 @@ export const storesAPI = {
 
   updatePlan: (storeId: string, plan: string) =>
     api.patch(`/stores/${storeId}/plan`, { plan }, { requiresAuth: true }),
+
+  // لیست Providerهایی که این فروشگاه الان می‌تونه انتخاب کنه (تقاطع پلن و
+  // «الان شارژ») — برای فروشگاه‌های بازارگاه خطا برمی‌گردونه (422)
+  getAvailableModels: (storeId: string) =>
+    api.get(`/my-stores/${storeId}/available-models`, { requiresAuth: true }),
+
+  updateModelPreference: (storeId: string, provider: string, model?: string) =>
+    api.patch(
+      `/my-stores/${storeId}/model-preference`,
+      { provider, model },
+      { requiresAuth: true },
+    ),
 };
 
 // ─────────────────────────────────────────────
@@ -153,6 +165,95 @@ export const paymentsAPI = {
 // ─────────────────────────────────────────────
 export const geminiUsageAPI = {
   get: () => api.get("/admin/gemini-usage", { requiresAuth: true }),
+};
+
+// ─────────────────────────────────────────────
+// LLM Providers API (فقط ادمین) — مدیریت Gemini/OpenAI/بعدی‌ها از پنل،
+// جایگزین .env قدیمی (AVAILABLE_LLM_PROVIDERS)
+// ─────────────────────────────────────────────
+export type LlmProviderModel = {
+  id: number;
+  llm_provider_id: number;
+  model_key: string;
+  label: string;
+  is_active: boolean;
+};
+
+export type LlmProviderProtocol = "gemini" | "anthropic" | "openai_compatible";
+
+export type LlmProvider = {
+  id: number;
+  key: string;
+  name: string;
+  is_active: boolean;
+  default_model: string | null;
+  embedding_model: string | null;
+  allowed_plans: string[];
+  protocol: LlmProviderProtocol;
+  base_url: string | null;
+  // خودِ کلید هیچ‌وقت از سرور برنمی‌گرده (فقط اینکه ثبت شده یا نه) —
+  // امنیتی‌ـه، نه یه محدودیت ناقص؛ برای عوض‌کردنش، همیشه باید دوباره کامل بفرستی
+  has_api_key: boolean;
+  is_default_chat: boolean;
+  is_default_embedding: boolean;
+  models: LlmProviderModel[];
+};
+
+export const llmProvidersAPI = {
+  getAll: () => api.get("/admin/llm-providers", { requiresAuth: true }),
+
+  create: (data: {
+    key: string;
+    name: string;
+    default_model?: string;
+    embedding_model?: string;
+    is_active?: boolean;
+    allowed_plans?: string[];
+    protocol?: LlmProviderProtocol;
+    api_key?: string;
+    base_url?: string;
+    is_default_chat?: boolean;
+    is_default_embedding?: boolean;
+  }) => api.post("/admin/llm-providers", data, { requiresAuth: true }),
+
+  update: (
+    id: number,
+    data: Partial<{
+      name: string;
+      default_model: string | null;
+      embedding_model: string | null;
+      is_active: boolean;
+      allowed_plans: string[];
+      protocol: LlmProviderProtocol;
+      api_key: string;
+      base_url: string | null;
+      is_default_chat: boolean;
+      is_default_embedding: boolean;
+    }>,
+  ) => api.patch(`/admin/llm-providers/${id}`, data, { requiresAuth: true }),
+
+  remove: (id: number) =>
+    api.delete(`/admin/llm-providers/${id}`, { requiresAuth: true }),
+
+  // مدل‌های زیرمجموعه‌ی هر Provider (مثلاً چندتا مدل مختلف زیر Gemini)
+  createModel: (
+    providerId: number,
+    data: { model_key: string; label: string; is_active?: boolean },
+  ) =>
+    api.post(`/admin/llm-providers/${providerId}/models`, data, {
+      requiresAuth: true,
+    }),
+
+  updateModel: (
+    id: number,
+    data: Partial<{ label: string; is_active: boolean }>,
+  ) =>
+    api.patch(`/admin/llm-provider-models/${id}`, data, {
+      requiresAuth: true,
+    }),
+
+  removeModel: (id: number) =>
+    api.delete(`/admin/llm-provider-models/${id}`, { requiresAuth: true }),
 };
 
 // ─────────────────────────────────────────────

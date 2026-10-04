@@ -95,6 +95,126 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
   );
 }
 
+type AvailableModelOption = {
+  model_key: string;
+  label: string;
+};
+
+type AvailableModel = {
+  provider: string;
+  label: string;
+  models: AvailableModelOption[];
+};
+
+function ModelPreferenceSelector({ storeId }: { storeId: string }) {
+  const [providers, setProviders] = useState<AvailableModel[] | null>(null);
+  // null یعنی «هنوز معلوم نیست» — برای فروشگاه‌های بازارگاه، درخواست با
+  // خطای ۴۲۲ برمی‌گرده که توی catch مدیریت می‌شه و این کامپوننت چیزی نشون نمی‌ده
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    storesAPI
+      .getAvailableModels(storeId)
+      .then((res) => {
+        const availableProviders: AvailableModel[] = res.data.models;
+        setProviders(availableProviders);
+
+        // اگه ترجیح قبلی فروشگاه (مثلاً gemini) الان دیگه بین Providerهای
+        // قابل‌انتخاب نیست (چون از پنل ادمین غیرفعال شده)، نباید همچنان
+        // انتخاب‌شده نشونش بدیم — وگرنه زدن «ذخیره» بدون هیچ تغییری، همون
+        // مقدار نامعتبر رو می‌فرسته و سرور با ۴۰۳ ردش می‌کنه
+        const currentProvider = res.data.current_preference || "";
+        const stillAvailable = availableProviders.some(
+          (p) => p.provider === currentProvider,
+        );
+
+        setSelectedProvider(stillAvailable ? currentProvider : "");
+        setSelectedModel(stillAvailable ? res.data.current_model || "" : "");
+      })
+      .catch(() => {
+        // فروشگاه بازارگاهه یا هنوز هیچ Providerـی براش شارژ نیست —
+        // هیچ‌چیزی نشون نمی‌دیم، نه خطا
+        setUnavailable(true);
+      });
+  }, [storeId]);
+
+  if (unavailable || !providers || providers.length === 0) {
+    return null;
+  }
+
+  const currentProvider = providers.find((p) => p.provider === selectedProvider);
+
+  return (
+    <div className="mb-4 rounded-xl bg-slate-50 px-4 py-3">
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        مدل هوش مصنوعی
+      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={selectedProvider}
+          onChange={(e) => {
+            setSelectedProvider(e.target.value);
+            // تا وقتی خودِ کاربر مدل این Provider رو انتخاب نکرده، چیزی ذخیره
+            // نمی‌شه — جلوگیری از این‌که مدل Provider قبلی اشتباهی بمونه
+            setSelectedModel("");
+          }}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
+        >
+          {!selectedProvider && <option value="">انتخاب Provider</option>}
+          {providers.map((p) => (
+            <option key={p.provider} value={p.provider}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+
+        {/* فقط وقتی Provider انتخابی حداقل یه مدل ثبت‌شده داشته باشه نشون
+            داده می‌شه — اگه پنل ادمین هنوز مدلی براش تعریف نکرده، فقط
+            انتخاب Provider کافیه (preferred_model خالی می‌مونه) */}
+        {currentProvider && currentProvider.models.length > 0 && (
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
+          >
+            {!selectedModel && <option value="">انتخاب مدل</option>}
+            {currentProvider.models.map((m) => (
+              <option key={m.model_key} value={m.model_key}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <button
+          type="button"
+          disabled={!selectedProvider || saving}
+          onClick={() => {
+            setSaving(true);
+            setSaved(false);
+            storesAPI
+              .updateModelPreference(
+                storeId,
+                selectedProvider,
+                selectedModel || undefined,
+              )
+              .then(() => setSaved(true))
+              .finally(() => setSaving(false));
+          }}
+          className="rounded-lg bg-[#6C5CE7] px-3 py-1.5 text-xs font-semibold text-white
+                     transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? "در حال ذخیره…" : saved ? "ذخیره شد ✓" : "ذخیره"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function StoresContent() {
   const [stores, setStores] = useState<Store[]>([]);
   const [canCreateStore, setCanCreateStore] = useState(true);
@@ -180,6 +300,8 @@ export default function StoresContent() {
                   limit={store.monthly_limit}
                 />
               </div>
+
+              <ModelPreferenceSelector storeId={store.store_id} />
 
               <div className="rounded-xl bg-slate-900 p-4">
                 <div className="mb-2 flex items-center justify-between">

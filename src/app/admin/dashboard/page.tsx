@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { storesAPI, geminiUsageAPI } from "@/lib/api";
+import {
+  storesAPI,
+  llmProvidersAPI,
+  LlmProvider,
+  LlmProviderModel,
+  LlmProviderProtocol,
+} from "@/lib/api";
 import { logoutAction } from "../../_actions/auth";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -174,100 +180,577 @@ function PlanEditor({
   );
 }
 
-function UsageMetric({
-  label,
-  current,
-  limit,
-  unit,
+const PLAN_OPTIONS = ["free", "starter", "business", "pro"] as const;
+
+function ProviderPlanCheckboxes({
+  selected,
+  onChange,
 }: {
-  label: string;
-  current: number;
-  limit: number | null;
-  unit: string;
+  selected: string[];
+  onChange: (plans: string[]) => void;
 }) {
-  if (limit === null) {
-    return (
-      <div>
-        <div className="mb-1 flex items-center justify-between text-xs">
-          <span className="font-medium text-slate-600">{label}</span>
-          <span className="text-slate-400">
-            {current.toLocaleString("fa-IR")} (نامحدود)
-          </span>
-        </div>
-        <div className="h-1.5 w-full rounded-full bg-slate-100" />
-      </div>
-    );
+  return (
+    <div className="flex flex-wrap gap-2">
+      {PLAN_OPTIONS.map((plan) => {
+        const checked = selected.includes(plan);
+        return (
+          <label
+            key={plan}
+            className={`cursor-pointer rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
+              checked
+                ? "border-[#6C5CE7] bg-[#6C5CE7]/10 text-[#6C5CE7]"
+                : "border-slate-300 text-slate-500"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() =>
+                onChange(
+                  checked
+                    ? selected.filter((p) => p !== plan)
+                    : [...selected, plan],
+                )
+              }
+              className="ml-1 align-middle"
+            />
+            {plan}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+const PROTOCOL_OPTIONS: { value: LlmProviderProtocol; label: string }[] = [
+  { value: "gemini", label: "Gemini" },
+  { value: "anthropic", label: "Claude / Anthropic" },
+  { value: "openai_compatible", label: "OpenAI یا سازگار با آن (مثلاً Grok)" },
+];
+
+function AddProviderForm({ onAdded }: { onAdded: (p: LlmProvider) => void }) {
+  const [key, setKey] = useState("");
+  const [name, setName] = useState("");
+  const [protocol, setProtocol] =
+    useState<LlmProviderProtocol>("openai_compatible");
+  const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [defaultModel, setDefaultModel] = useState("");
+  const [embeddingModel, setEmbeddingModel] = useState("");
+  const [plans, setPlans] = useState<string[]>(["business", "pro"]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleAdd() {
+    if (!key.trim() || !name.trim()) {
+      setError("کلید و اسم Provider الزامی‌ست.");
+      return;
+    }
+    if (!apiKey.trim()) {
+      setError("کلید API الزامی‌ست — بدون آن این Provider قابل‌استفاده نیست.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await llmProvidersAPI.create({
+        key: key.trim().toLowerCase(),
+        name: name.trim(),
+        protocol,
+        api_key: apiKey.trim(),
+        base_url: baseUrl.trim() || undefined,
+        default_model: defaultModel.trim() || undefined,
+        embedding_model: embeddingModel.trim() || undefined,
+        allowed_plans: plans,
+        is_active: true,
+      });
+      onAdded(res.data.provider);
+      setKey("");
+      setName("");
+      setApiKey("");
+      setBaseUrl("");
+      setDefaultModel("");
+      setEmbeddingModel("");
+      setPlans(["business", "pro"]);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.errors?.key?.[0] ||
+          err?.response?.data?.error ||
+          "ثبت Provider جدید ناموفق بود.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const ratio = current / limit;
-  const barColor =
-    ratio >= 0.9
-      ? "bg-rose-500"
-      : ratio >= 0.7
-        ? "bg-amber-500"
-        : "bg-[#6C5CE7]";
-
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-600">{label}</span>
-        <span className="text-slate-500">
-          {current.toLocaleString("fa-IR")} / {limit.toLocaleString("fa-IR")}{" "}
-          {unit}
-        </span>
+    <div className="rounded-xl border border-dashed border-slate-300 p-4">
+      <p className="mb-3 text-sm font-semibold text-slate-700">
+        + افزودن Provider جدید
+      </p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <input
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="کلید یکتا (مثلاً grok)"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          dir="ltr"
+        />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="اسم نمایشی (مثلاً Grok)"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+        />
+        <select
+          value={protocol}
+          onChange={(e) => setProtocol(e.target.value as LlmProviderProtocol)}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+        >
+          {PROTOCOL_OPTIONS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-        <div
-          className={`h-full rounded-full ${barColor}`}
-          style={{ width: `${Math.min(100, ratio * 100)}%` }}
+
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="کلید API (الزامی)"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          dir="ltr"
+        />
+        <input
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          placeholder="آدرس پایه (فقط برای Gateway سازگار با OpenAI، مثل Grok)"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          dir="ltr"
         />
       </div>
+
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <input
+          value={defaultModel}
+          onChange={(e) => setDefaultModel(e.target.value)}
+          placeholder="مدل پیش‌فرض چت (اختیاری)"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          dir="ltr"
+        />
+        <input
+          value={embeddingModel}
+          onChange={(e) => setEmbeddingModel(e.target.value)}
+          placeholder="مدل پیش‌فرض Embedding (اختیاری)"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          dir="ltr"
+        />
+      </div>
+
+      <div className="mt-3">
+        <p className="mb-1.5 text-xs text-slate-500">در دسترس برای پلن‌ها:</p>
+        <ProviderPlanCheckboxes selected={plans} onChange={setPlans} />
+      </div>
+      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      <button
+        type="button"
+        onClick={handleAdd}
+        disabled={saving}
+        className="mt-3 rounded-lg bg-[#6C5CE7] px-4 py-1.5 text-xs font-semibold text-white
+                   transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        {saving ? "در حال ثبت…" : "افزودن"}
+      </button>
     </div>
   );
 }
 
-function GeminiUsageCard({
-  title,
-  usage,
+function ProviderModelManager({
+  provider,
+  onProviderUpdated,
 }: {
-  title: string;
-  usage: GeminiCategoryUsage;
+  provider: LlmProvider;
+  onProviderUpdated: (p: LlmProvider) => void;
 }) {
+  const [modelKey, setModelKey] = useState("");
+  const [label, setLabel] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState("");
+
+  // محافظ دفاعی: حتی اگه یه مسیر دیگه‌ی Backend یه‌روزی models رو ناقص
+  // برگردونه، این کامپوننت دیگه کرش نمی‌کنه
+  const models = provider.models ?? [];
+
+  function replaceModel(updated: LlmProviderModel) {
+    onProviderUpdated({
+      ...provider,
+      models: models.map((m) => (m.id === updated.id ? updated : m)),
+    });
+  }
+
+  function removeModelLocally(id: number) {
+    onProviderUpdated({
+      ...provider,
+      models: models.filter((m) => m.id !== id),
+    });
+  }
+
+  async function handleAddModel() {
+    if (!modelKey.trim() || !label.trim()) {
+      setError("کلید و اسم مدل الزامی‌ست.");
+      return;
+    }
+    setAdding(true);
+    setError("");
+    try {
+      const res = await llmProvidersAPI.createModel(provider.id, {
+        model_key: modelKey.trim(),
+        label: label.trim(),
+        is_active: true,
+      });
+      onProviderUpdated({
+        ...provider,
+        models: [...models, res.data.model],
+      });
+      setModelKey("");
+      setLabel("");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "اضافه‌کردن مدل جدید ناموفق بود.");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function toggleModelActive(model: LlmProviderModel) {
+    const res = await llmProvidersAPI.updateModel(model.id, {
+      is_active: !model.is_active,
+    });
+    replaceModel(res.data.model);
+  }
+
+  async function handleDeleteModel(model: LlmProviderModel) {
+    if (!confirm(`مدل «${model.label}» حذف بشه؟`)) return;
+    await llmProvidersAPI.removeModel(model.id);
+    removeModelLocally(model.id);
+  }
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <p className="mb-3 text-sm font-semibold text-slate-900">{title}</p>
-      <div className="space-y-3">
-        <UsageMetric
-          label="درخواست/دقیقه (RPM)"
-          current={usage.current_rpm}
-          limit={usage.rpm_limit}
-          unit=""
+    <div className="mt-3 border-t border-dashed border-slate-200 pt-3">
+      <p className="mb-2 text-xs font-semibold text-slate-600">
+        مدل‌های این Provider
+      </p>
+
+      {models.length === 0 && (
+        <p className="mb-2 text-xs text-slate-400">
+          هنوز مدلی ثبت نشده — فروشگاه‌ها فقط Provider رو می‌بینن، نه مدل خاصی.
+        </p>
+      )}
+
+      <div className="mb-2 space-y-1.5">
+        {models.map((m) => (
+          <div
+            key={m.id}
+            className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5"
+          >
+            <div>
+              <span className="text-xs font-medium text-slate-700">
+                {m.label}
+              </span>
+              <span
+                className="mr-2 font-mono text-[11px] text-slate-400"
+                dir="ltr"
+              >
+                {m.model_key}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-1 text-[11px]">
+                <input
+                  type="checkbox"
+                  checked={m.is_active}
+                  onChange={() => toggleModelActive(m)}
+                />
+                فعال
+              </label>
+              <button
+                type="button"
+                onClick={() => handleDeleteModel(m)}
+                className="text-[11px] font-medium text-rose-600 underline"
+              >
+                حذف
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <input
+          value={modelKey}
+          onChange={(e) => setModelKey(e.target.value)}
+          placeholder="کلید مدل (مثلاً gemini-2.5-pro)"
+          className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+          dir="ltr"
         />
-        <UsageMetric
-          label="توکن/دقیقه (TPM)"
-          current={usage.current_tpm}
-          limit={usage.tpm_limit}
-          unit=""
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="اسم نمایشی"
+          className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
         />
-        <UsageMetric
-          label="درخواست/روز (RPD)"
-          current={usage.current_rpd}
-          limit={usage.rpd_limit}
-          unit=""
+        <button
+          type="button"
+          onClick={handleAddModel}
+          disabled={adding}
+          className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-white
+                     transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {adding ? "..." : "+ افزودن مدل"}
+        </button>
+      </div>
+      {error && <p className="mt-1 text-[11px] text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
+function ProviderRow({
+  provider,
+  onUpdated,
+  onDeleted,
+}: {
+  provider: LlmProvider;
+  onUpdated: (p: LlmProvider) => void;
+  onDeleted: (id: number) => void;
+}) {
+  const [plans, setPlans] = useState(provider.allowed_plans);
+  const [savingPlans, setSavingPlans] = useState(false);
+  const [newApiKey, setNewApiKey] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
+
+  async function toggleActive() {
+    const res = await llmProvidersAPI.update(provider.id, {
+      is_active: !provider.is_active,
+    });
+    onUpdated(res.data.provider);
+  }
+
+  async function savePlans() {
+    setSavingPlans(true);
+    try {
+      const res = await llmProvidersAPI.update(provider.id, {
+        allowed_plans: plans,
+      });
+      onUpdated(res.data.provider);
+    } finally {
+      setSavingPlans(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Provider «${provider.name}» حذف بشه؟`)) return;
+    await llmProvidersAPI.remove(provider.id);
+    onDeleted(provider.id);
+  }
+
+  async function handleSaveKey() {
+    if (!newApiKey.trim()) return;
+    setSavingKey(true);
+    setKeySaved(false);
+    try {
+      const res = await llmProvidersAPI.update(provider.id, {
+        api_key: newApiKey.trim(),
+      });
+      onUpdated(res.data.provider);
+      setNewApiKey("");
+      setKeySaved(true);
+      setTimeout(() => setKeySaved(false), 2000);
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
+  async function handleSetDefaultChat() {
+    const res = await llmProvidersAPI.update(provider.id, {
+      is_default_chat: true,
+    });
+    onUpdated(res.data.provider);
+  }
+
+  async function handleSetDefaultEmbedding() {
+    const res = await llmProvidersAPI.update(provider.id, {
+      is_default_embedding: true,
+    });
+    onUpdated(res.data.provider);
+  }
+
+  const plansChanged =
+    JSON.stringify([...plans].sort()) !==
+    JSON.stringify([...provider.allowed_plans].sort());
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <span className="font-semibold text-slate-900">{provider.name}</span>
+          <span className="mr-2 font-mono text-xs text-slate-400" dir="ltr">
+            {provider.key}
+          </span>
+          <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
+            {provider.protocol}
+          </span>
+          {provider.is_default_chat && (
+            <span className="mr-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
+              پیش‌فرض چت
+            </span>
+          )}
+          {provider.is_default_embedding && (
+            <span className="mr-1 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
+              پیش‌فرض Embedding
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium">
+            <input
+              type="checkbox"
+              checked={provider.is_active}
+              onChange={toggleActive}
+            />
+            فعال (شارژ)
+          </label>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="text-xs font-medium text-rose-600 underline"
+          >
+            حذف
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-dashed border-slate-200 pb-3">
+        <span
+          className={`text-xs ${
+            provider.has_api_key ? "text-emerald-600" : "text-rose-600"
+          }`}
+        >
+          {provider.has_api_key ? "کلید API ثبت شده ✓" : "کلید API ثبت نشده ✗"}
+        </span>
+        <input
+          type="password"
+          value={newApiKey}
+          onChange={(e) => setNewApiKey(e.target.value)}
+          placeholder={
+            provider.has_api_key ? "جایگزینی کلید (اختیاری)" : "کلید API"
+          }
+          className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+          dir="ltr"
+        />
+        <button
+          type="button"
+          onClick={handleSaveKey}
+          disabled={!newApiKey.trim() || savingKey}
+          className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-white
+                     transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {savingKey ? "..." : keySaved ? "ذخیره شد ✓" : "ذخیره کلید"}
+        </button>
+
+        {!provider.is_default_chat && (
+          <button
+            type="button"
+            onClick={handleSetDefaultChat}
+            className="rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-emerald-400 hover:text-emerald-700"
+          >
+            پیش‌فرض چت کن
+          </button>
+        )}
+        {!provider.is_default_embedding && (
+          <button
+            type="button"
+            onClick={handleSetDefaultEmbedding}
+            className="rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-sky-400 hover:text-sky-700"
+          >
+            پیش‌فرض Embedding کن
+          </button>
+        )}
+      </div>
+
+      <p className="mb-1.5 text-xs text-slate-500">در دسترس برای پلن‌ها:</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <ProviderPlanCheckboxes selected={plans} onChange={setPlans} />
+        {plansChanged && (
+          <button
+            type="button"
+            onClick={savePlans}
+            disabled={savingPlans}
+            className="rounded-lg bg-[#6C5CE7] px-3 py-1 text-xs font-semibold text-white
+                       transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {savingPlans ? "..." : "ذخیره"}
+          </button>
+        )}
+      </div>
+
+      <ProviderModelManager provider={provider} onProviderUpdated={onUpdated} />
+    </div>
+  );
+}
+
+function LlmProviderManager() {
+  const [providers, setProviders] = useState<LlmProvider[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    llmProvidersAPI
+      .getAll()
+      .then((res) => setProviders(res.data.providers))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 text-base font-bold text-slate-900">
+        ارائه‌دهندگان هوش مصنوعی
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        خاموش/روشن‌کردن یا اضافه‌کردن Provider جدید، بدون نیاز به تغییر .env یا
+        Restart سرور — بلافاصله روی فروشگاه‌ها اثر می‌گذارد.
+      </p>
+
+      {loading && <p className="text-sm text-slate-500">در حال بارگذاری…</p>}
+
+      {!loading && (
+        <div className="space-y-3">
+          {providers.map((p) => (
+            <ProviderRow
+              key={p.id}
+              provider={p}
+              onUpdated={(updated) =>
+                setProviders((prev) =>
+                  prev.map((x) => (x.id === updated.id ? updated : x)),
+                )
+              }
+              onDeleted={(id) =>
+                setProviders((prev) => prev.filter((x) => x.id !== id))
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4">
+        <AddProviderForm
+          onAdded={(p) => setProviders((prev) => [...prev, p])}
         />
       </div>
     </div>
   );
 }
-
-type GeminiCategoryUsage = {
-  current_rpm: number;
-  rpm_limit: number;
-  current_tpm: number;
-  tpm_limit: number;
-  current_rpd: number;
-  rpd_limit: number | null;
-};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -276,17 +759,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalStore, setModalStore] = useState<Store | null>(null);
-  const [geminiUsage, setGeminiUsage] = useState<{
-    chat: GeminiCategoryUsage;
-    embedding: GeminiCategoryUsage;
-  } | null>(null);
-
-  function fetchGeminiUsage() {
-    geminiUsageAPI
-      .get()
-      .then((res) => setGeminiUsage(res.data.usage))
-      .catch(() => {});
-  }
 
   useEffect(() => {
     function handleLogout() {
@@ -299,8 +771,6 @@ export default function AdminPage() {
       .then((res) => setStores(res.data.stores))
       .catch(() => setError("دریافت لیست فروشگاه‌ها ناموفق بود."))
       .finally(() => setLoading(false));
-
-    fetchGeminiUsage();
 
     return () => window.removeEventListener("auth:logout", handleLogout);
   }, [router]);
@@ -328,39 +798,13 @@ export default function AdminPage() {
           </span>
         </div>
 
-        {geminiUsage && (
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">
-              مصرف زنده‌ی Gemini (نسبت به سقف واقعی Tier 1 — هر مدل جدا)
-            </span>
-            <button
-              type="button"
-              onClick={fetchGeminiUsage}
-              className="text-xs font-medium text-[#6C5CE7] underline"
-            >
-              به‌روزرسانی
-            </button>
-          </div>
-        )}
-
-        {geminiUsage && (
-          <div className="mb-8 grid gap-4 sm:grid-cols-2">
-            <GeminiUsageCard
-              title="مدل چت (Gemini 3.6 Flash)"
-              usage={geminiUsage.chat}
-            />
-            <GeminiUsageCard
-              title="مدل Embedding (جستجوی معنایی)"
-              usage={geminiUsage.embedding}
-            />
-          </div>
-        )}
+        <LlmProviderManager />
 
         {!loading && !error && stores.length > 0 && (
           <div className="mb-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-xs text-slate-400">
-                مجموع توکن ورودی Gemini از ابتدا (کل فروشگاه‌ها)
+                مجموع توکن ورودی از ابتدا (کل فروشگاه‌ها، همه‌ی Providerها)
               </p>
               <p className="mt-2 text-2xl font-bold text-slate-900">
                 {stores
@@ -370,7 +814,7 @@ export default function AdminPage() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-xs text-slate-400">
-                مجموع توکن خروجی Gemini از ابتدا (کل فروشگاه‌ها)
+                مجموع توکن خروجی از ابتدا (کل فروشگاه‌ها، همه‌ی Providerها)
               </p>
               <p className="mt-2 text-2xl font-bold text-slate-900">
                 {stores
@@ -414,7 +858,7 @@ export default function AdminPage() {
                       مصرف این ماه
                     </th>
                     <th className="px-4 py-3 text-right font-medium">
-                      توکن Gemini (ورودی/خروجی)
+                      توکن مصرفی (ورودی/خروجی)
                     </th>
                     <th className="px-4 py-3 text-right font-medium">
                       آخرین استفاده
