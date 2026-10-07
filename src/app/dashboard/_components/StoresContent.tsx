@@ -146,7 +146,9 @@ function ModelPreferenceSelector({ storeId }: { storeId: string }) {
     return null;
   }
 
-  const currentProvider = providers.find((p) => p.provider === selectedProvider);
+  const currentProvider = providers.find(
+    (p) => p.provider === selectedProvider,
+  );
 
   return (
     <div className="mb-4 rounded-xl bg-slate-50 px-4 py-3">
@@ -286,12 +288,20 @@ export default function StoresContent() {
               </div>
 
               {(store.plan === "business" || store.plan === "pro") && (
-                <Link
-                  href={`/dashboard/stores/${store.store_id}/conversations`}
-                  className="mb-4 inline-block text-xs font-medium text-[#6C5CE7] underline"
-                >
-                  مشاهده‌ی تاریخچه‌ی مکالمات
-                </Link>
+                <div className="mb-4 flex flex-wrap items-center gap-4">
+                  <Link
+                    href={`/dashboard/stores/${store.store_id}/conversations`}
+                    className="text-xs font-medium text-[#6C5CE7] underline"
+                  >
+                    مشاهده‌ی تاریخچه‌ی مکالمات
+                  </Link>
+                  <Link
+                    href={`/dashboard/stores/${store.store_id}/stats`}
+                    className="text-xs font-medium text-[#6C5CE7] underline"
+                  >
+                    آمار و گزارش
+                  </Link>
+                </div>
               )}
 
               <div className="mb-4">

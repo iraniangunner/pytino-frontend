@@ -271,3 +271,14 @@ export const conversationsAPI = {
       requiresAuth: true,
     }),
 };
+
+// ─────────────────────────────────────────────
+// Stats API (آمار چت‌بات — فقط پلن‌های business و pro)
+// ─────────────────────────────────────────────
+export const statsAPI = {
+  get: (storeId: string, days = 30) =>
+    api.get(`/stores/${storeId}/stats`, {
+      params: { days },
+      requiresAuth: true,
+    }),
+};
